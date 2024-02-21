@@ -77,8 +77,12 @@ def parse_args():
 # args = getConfig_Input()
 args = parse_args()
 
+
 def main(args):
     ENV_SEED=1331
+    torch.manual_seed(ENV_SEED)
+    random.seed(ENV_SEED)
+
     # you must use cuda to run this code.
     USE_CUDA = torch.cuda.is_available()
 
@@ -200,6 +204,7 @@ def main(args):
         devText.extend(['<PAD>']*(args.MAX_LEN - len(devText)))
         devText = [prepare_intent(temp, word2index) for temp in devText]
         dev_num_text.append(devText)
+    
 
     phobert_tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")  # Or PhoBert-large
 
@@ -219,15 +224,19 @@ def main(args):
                                                 return_attention_mask=True,
                                                 padding='max_length',
                                                 truncation=True)
-    
+
     # Get subtoken mask
     train_subtoken_mask = get_subtoken_mask(train_text,phobert_tokenizer, args.MAX_LEN)
     dev_subtoken_mask = get_subtoken_mask(dev_text,phobert_tokenizer, args.MAX_LEN)
 
-    # Dataloader 
-    #making single list
+    # # Dataloader 
+    # #making single list
     train_data=NLUDataset(train_num_text, train_num_slotTag, train_num_label, dataset_toks['input_ids'], dataset_toks['attention_mask'], dataset_toks['token_type_ids'],train_subtoken_mask, USE_CUDA=USE_CUDA)
     test_data=NLUDataset(dev_num_text, dev_num_slotTag, dev_num_label, dev_toks['input_ids'], dev_toks['attention_mask'], dev_toks['token_type_ids'],dev_subtoken_mask, USE_CUDA= USE_CUDA)
+    
+    print(train_data.__getitem__(4))
+    print("---------------------")
+    print(test_data.__getitem__(4))
 
     train_data = DataLoader(train_data, batch_size=args.BATCH_SIZE, shuffle=True)
     test_data = DataLoader(test_data, batch_size=args.BATCH_SIZE, shuffle=True)
@@ -237,6 +246,7 @@ def main(args):
     encoder = Encoder(len(word2index))
     middle = Middle()
     decoder = Decoder(len(tag2index),len(label2index))
+    
     if USE_CUDA:
         encoder = encoder.cuda()
         decoder = decoder.cuda()
@@ -308,30 +318,39 @@ def main(args):
         sf_f1=[]
         id_precision=[]
 
-        #### TEST
-        encoder.eval() # set to test mode
-        middle.eval()
-        decoder.eval()
-        bert_layer.eval()
-        with torch.no_grad(): # to turn off gradients computation
-            for i,(x,tag_target,intent_target,bert_tokens,bert_mask,bert_toktype,subtoken_mask,x_mask) in enumerate(test_data):
-                batch_size=tag_target.size(0)
-                encoder.zero_grad()
-                middle.zero_grad()
-                decoder.zero_grad()
-                bert_layer.zero_grad()
-                bert_hidden,bert_pooler = bert_layer(bert_info=(bert_tokens,bert_mask,bert_toktype))
-                encoder_output = encoder(bert_last_hidden=bert_hidden)
-                output = middle(encoder_output,bert_mask==0,training=True)
-                start_decode = Variable(torch.LongTensor([[tag2index['<BOS>']]*batch_size])).cuda().transpose(1,0)
-                tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask,infer=True)
-                loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
-                loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
-                loss = loss_1 + loss_2
-                losses.append(loss.data.cpu().numpy() if USE_CUDA else loss.data.numpy()[0])
-                id_precision.append(accuracy_score(intent_target.detach().cpu(),torch.argmax(intent_score,dim=1).detach().cpu()))
-                pred_list,target_list=mask_important_tags(torch.argmax(tag_score,dim=1).view(batch_size,args.MAX_LEN),tag_target,x_mask)
-                sf_f1.append(f1_score(pred_list,target_list,average="micro",zero_division=0))
+        #### Eval 
+        encoder.train() # set to train mode
+        middle.train()
+        decoder.train()
+        bert_layer.train()
+         # to turn off gradients computation
+        for i,(x,tag_target,intent_target,bert_tokens,bert_mask,bert_toktype,subtoken_mask,x_mask) in enumerate(test_data):
+            batch_size=tag_target.size(0)
+            encoder.zero_grad()
+            middle.zero_grad()
+            decoder.zero_grad()
+            bert_layer.zero_grad()
+            bert_hidden,bert_pooler = bert_layer(bert_info=(bert_tokens,bert_mask,bert_toktype))
+            encoder_output = encoder(bert_last_hidden=bert_hidden)
+            output = middle(encoder_output,bert_mask==0,training=True)
+            start_decode = Variable(torch.LongTensor([[tag2index['<BOS>']]*batch_size])).cuda().transpose(1,0)
+            tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask,infer=True)
+            loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
+            loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
+            loss = loss_1 + loss_2
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(encoder.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(middle.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(decoder.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(bert_layer.parameters(), 0.5)
+            enc_optim.step()
+            mid_optim.step()
+            dec_optim.step()
+            ber_optim.step()
+            losses.append(loss.data.cpu().numpy() if USE_CUDA else loss.data.numpy()[0])
+            id_precision.append(accuracy_score(intent_target.detach().cpu(),torch.argmax(intent_score,dim=1).detach().cpu()))
+            pred_list,target_list=mask_important_tags(torch.argmax(tag_score,dim=1).view(batch_size,args.MAX_LEN),tag_target,x_mask)
+            sf_f1.append(f1_score(pred_list,target_list,average="micro",zero_division=0))
         print("Test-")
         print(f"loss:{round(float(np.mean(losses)),4)}")
         print(f"SlotFilling F1:{round(float(np.mean(sf_f1)),4)}")

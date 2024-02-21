@@ -27,7 +27,7 @@ import time
 
 
 
-def generate_square_subsequent_mask(sz: int) -> torch.Tensor:
+def generate_square_subsequent_mask(sz: int):
   """
   Generates an upper-triangular matrix of -inf, with zeros on diag.
 
@@ -42,7 +42,7 @@ def generate_square_subsequent_mask(sz: int) -> torch.Tensor:
   return torch.triu(torch.ones(sz, sz) * float('-inf'), diagonal=1)
 
 
-def generate_square_diagonal_mask(sz: int) -> torch.Tensor:
+def generate_square_diagonal_mask(sz: int):
   """
   Generates a square matrix of size (sz, sz) with zeros on the diagonal and
   -inf on all other entries.

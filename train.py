@@ -18,6 +18,7 @@ from transformers import AutoModel, AutoTokenizer
 from models import * 
 from utils import *
 from preprocess import * 
+from losses import *
 
 # Other
 import random
@@ -242,8 +243,7 @@ def main(args):
         middle = middle.cuda()
         bert_layer.cuda()
 
-    loss_function_1 = nn.CrossEntropyLoss()
-    loss_function_2 = nn.CrossEntropyLoss()
+
     dec_optim = optim.AdamW(decoder.parameters(),lr=0.0001)
     enc_optim = optim.AdamW(encoder.parameters(),lr=0.001)
     ber_optim = optim.AdamW(bert_layer.parameters(),lr=0.0001)
@@ -280,8 +280,8 @@ def main(args):
             start_decode = Variable(torch.LongTensor([[tag2index['<BOS>']]*batch_size])).cuda().transpose(1,0)
             start_decode = torch.cat((start_decode,tag_target[:,:-1]),dim=1)
             tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask)
-            loss_1 = loss_function_1(tag_score,tag_target.view(-1))
-            loss_2 = loss_function_2(intent_score,intent_target)
+            loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
+            loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
             loss = loss_1+loss_2
             losses.append(loss.data.cpu().numpy() if USE_CUDA else loss.data.numpy()[0])
             loss.backward()

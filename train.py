@@ -235,7 +235,7 @@ def main(args):
     # #making single list
     train_data=NLUDataset(train_num_text, train_num_slotTag, train_num_label, dataset_toks['input_ids'], dataset_toks['attention_mask'], dataset_toks['token_type_ids'],train_subtoken_mask, USE_CUDA=USE_CUDA)
     test_data=NLUDataset(dev_num_text, dev_num_slotTag, dev_num_label, dev_toks['input_ids'], dev_toks['attention_mask'], dev_toks['token_type_ids'],dev_subtoken_mask, USE_CUDA= USE_CUDA)
-    
+
 
     train_data = DataLoader(train_data, batch_size=args.BATCH_SIZE, shuffle=True)
     test_data = DataLoader(test_data, batch_size=args.BATCH_SIZE, shuffle=True)
@@ -291,7 +291,7 @@ def main(args):
             tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask, tag2index=tag2index)
             loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
             loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
-            loss = 1.25*loss_1+loss_2
+            loss = loss_1+loss_2
             losses.append(loss.data.cpu().numpy() if USE_CUDA else loss.data.numpy()[0])
             loss.backward()
             torch.nn.utils.clip_grad_norm_(encoder.parameters(), 0.5)
@@ -337,7 +337,7 @@ def main(args):
                 tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask,tag2index=tag2index, infer=True)
                 loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
                 loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
-                loss = 1.25*loss_1 +  loss_2
+                loss = loss_1 +  loss_2
                 losses.append(loss.data.cpu().numpy() if USE_CUDA else loss.data.numpy()[0])
                 id_precision.append(accuracy_score(intent_target.detach().cpu(),torch.argmax(intent_score,dim=1).detach().cpu()))
                 pred_list,target_list=mask_important_tags(torch.argmax(tag_score,dim=1).view(batch_size,args.MAX_LEN),tag_target,x_mask)

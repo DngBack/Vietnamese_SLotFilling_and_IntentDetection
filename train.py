@@ -325,8 +325,8 @@ def main(args):
                 output = middle(encoder_output,bert_mask==0,training=True)
                 start_decode = Variable(torch.LongTensor([[tag2index['<BOS>']]*batch_size])).cuda().transpose(1,0)
                 tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask,infer=True)
-                loss_1 = loss_function_1(tag_score,tag_target.view(-1))
-                loss_2 = loss_function_2(intent_score,intent_target)
+                loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
+                loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
                 loss = loss_1 + loss_2
                 losses.append(loss.data.cpu().numpy() if USE_CUDA else loss.data.numpy()[0])
                 id_precision.append(accuracy_score(intent_target.detach().cpu(),torch.argmax(intent_score,dim=1).detach().cpu()))

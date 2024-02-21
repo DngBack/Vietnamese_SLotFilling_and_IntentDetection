@@ -334,7 +334,7 @@ def main(args):
             encoder_output = encoder(bert_last_hidden=bert_hidden)
             output = middle(encoder_output,bert_mask==0,training=True)
             start_decode = Variable(torch.LongTensor([[tag2index['<BOS>']]*batch_size])).cuda().transpose(1,0)
-            tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask,infer=True)
+            tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask)
             loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
             loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
             loss = loss_1 + loss_2

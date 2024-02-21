@@ -292,7 +292,7 @@ def main(args):
             tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask, tag2index=tag2index)
             loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
             loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
-            loss = loss_1+loss_2
+            loss = 1.25*loss_1+loss_2
             losses.append(loss.data.cpu().numpy() if USE_CUDA else loss.data.numpy()[0])
             loss.backward()
             torch.nn.utils.clip_grad_norm_(encoder.parameters(), 0.5)
@@ -336,12 +336,12 @@ def main(args):
             start_decode = Variable(torch.LongTensor([[tag2index['<BOS>']]*batch_size])).cuda().transpose(1,0)
             start_decode = torch.cat((start_decode,tag_target[:,:-1]),dim=1)
             tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask,tag2index=tag2index, infer=True)
-            loss_1 = loss_function_1_smoothed(tag_score,tag_target.view(-1))
-            loss_2 = loss_function_2_smoothed(intent_score,intent_target)
-            loss = loss_1 +  loss_2
+            loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
+            loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
+            loss = 1.25*loss_1 +  loss_2
             losses.append(loss.data.cpu().numpy() if USE_CUDA else loss.data.numpy()[0])
             id_precision.append(accuracy_score(intent_target.detach().cpu(),torch.argmax(intent_score,dim=1).detach().cpu()))
-            pred_list,target_list=mask_important_tags(torch.argmax(tag_score,dim=1).view(batch_size,MAX_LEN),tag_target,x_mask)
+            pred_list,target_list=mask_important_tags(torch.argmax(tag_score,dim=1).view(batch_size,args.MAX_LEN),tag_target,x_mask)
             sf_f1.append(f1_score(pred_list,target_list,average="micro",zero_division=0))
             print("Test-")
             print(f"loss:{round(float(np.mean(losses)),4)}")

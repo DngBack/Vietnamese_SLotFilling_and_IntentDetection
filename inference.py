@@ -229,10 +229,8 @@ def inference(args):
     with torch.no_grad():
         index = random.choice(range(len(dev_text)))
         test_raw = dev_text[index]
-        print(test_raw)
 
         bert_tokens = dev_toks['input_ids'][index].unsqueeze(0).cuda()
-        print(bert_tokens)
         bert_mask = dev_toks['attention_mask'][index].unsqueeze(0).cuda()
         bert_toktype = dev_toks['token_type_ids'][index].unsqueeze(0).cuda()
         subtoken_mask = dev_subtoken_mask[index].unsqueeze(0).cuda()

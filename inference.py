@@ -243,7 +243,7 @@ def inference(args):
         bert_hidden,bert_pooler = bert_layer(bert_info=(bert_tokens,bert_mask,bert_toktype))
         encoder_output = encoder(bert_last_hidden=bert_hidden)
         output = middle(encoder_output,bert_mask==0)
-        tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask,infer=True)
+        tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask,infer=True, tag2index=tag2index)
 
         v,i = torch.max(tag_score,1)
         print("Sentence           : ",test_raw)

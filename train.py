@@ -234,9 +234,9 @@ def main(args):
     train_data=NLUDataset(train_num_text, train_num_slotTag, train_num_label, dataset_toks['input_ids'], dataset_toks['attention_mask'], dataset_toks['token_type_ids'],train_subtoken_mask, USE_CUDA=USE_CUDA)
     test_data=NLUDataset(dev_num_text, dev_num_slotTag, dev_num_label, dev_toks['input_ids'], dev_toks['attention_mask'], dev_toks['token_type_ids'],dev_subtoken_mask, USE_CUDA= USE_CUDA)
     
-    print(train_data.__getitem__(4))
-    print("---------------------")
-    print(test_data.__getitem__(4))
+    # print(train_data.__getitem__(4))
+    # print("---------------------")
+    # print(test_data.__getitem__(4))
 
     train_data = DataLoader(train_data, batch_size=args.BATCH_SIZE, shuffle=True)
     test_data = DataLoader(test_data, batch_size=args.BATCH_SIZE, shuffle=True)
@@ -289,7 +289,7 @@ def main(args):
             output = middle(encoder_output,bert_mask==0,training=True)
             start_decode = Variable(torch.LongTensor([[tag2index['<BOS>']]*batch_size])).cuda().transpose(1,0)
             start_decode = torch.cat((start_decode,tag_target[:,:-1]),dim=1)
-            tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask)
+            tag_score, intent_score = decoder(start_decode,output,bert_mask==0,bert_subtoken_maskings=subtoken_mask, tag2index=tag2index)
             loss_1 = loss_function_1_smoothed(tag_score, tag_target.view(-1), num_classes=len(tag2index))
             loss_2 = loss_function_2_smoothed(intent_score,intent_target, num_classes=len(label2index))
             loss = loss_1+loss_2

@@ -160,6 +160,7 @@ def main(args):
     train_num_label = [prepare_intent(temp,label2index) for temp in train_label]
     dev_num_label = [prepare_intent(temp,label2index) for temp in dev_label]
 
+
     # Convert from content Tag
     # Convert from to list per tag
     lst_slotTag = []
@@ -182,6 +183,7 @@ def main(args):
         slotTag.extend(['<PAD>']*(args.MAX_LEN-len(slotTag)))
         slotTag = [prepare_intent(temp, tag2index) for temp in slotTag]
         dev_num_slotTag.append(slotTag)
+
 
     # Convert the text
     train_lst_text = []
@@ -234,9 +236,6 @@ def main(args):
     train_data=NLUDataset(train_num_text, train_num_slotTag, train_num_label, dataset_toks['input_ids'], dataset_toks['attention_mask'], dataset_toks['token_type_ids'],train_subtoken_mask, USE_CUDA=USE_CUDA)
     test_data=NLUDataset(dev_num_text, dev_num_slotTag, dev_num_label, dev_toks['input_ids'], dev_toks['attention_mask'], dev_toks['token_type_ids'],dev_subtoken_mask, USE_CUDA= USE_CUDA)
     
-    # print(train_data.__getitem__(4))
-    # print("---------------------")
-    # print(test_data.__getitem__(4))
 
     train_data = DataLoader(train_data, batch_size=args.BATCH_SIZE, shuffle=True)
     test_data = DataLoader(test_data, batch_size=args.BATCH_SIZE, shuffle=True)

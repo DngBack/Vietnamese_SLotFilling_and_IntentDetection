@@ -356,7 +356,7 @@ def main(args):
                 torch.save(bert_layer,f"models/ctran{args.fn}-bertlayer.pkl")
                 torch.save(encoder,f"models/ctran{args.fn}-encoder.pkl")
                 torch.save(middle,f"models/ctran{args.fn}-middle.pkl")
-                torch.save(decoder,f"models/ctran{args.n}-decoder.pkl")
+                torch.save(decoder,f"models/ctran{args.fn}-decoder.pkl")
         enc_scheduler.step()
         dec_scheduler.step()
         mid_scheduler.step()
